@@ -1,6 +1,8 @@
-// src/ble/ble_handler.cpp
 #include "ble/ble_handler.h"
 #include <Arduino.h>
+
+// Initialize static instance pointer
+BLEHandler* BLEHandler::instance = nullptr;
 
 class RaceBoxCallbacks : public BLEClientCallbacks {
     BLEHandler& handler;
@@ -30,8 +32,8 @@ public:
     void onResult(BLEAdvertisedDevice advertisedDevice) override {
         String deviceName = advertisedDevice.getName().c_str();
         if(deviceName.startsWith("RaceBox Micro")) {
-            if (handler.pServerAddress == nullptr) {
-                handler.pServerAddress = new BLEAddress(advertisedDevice.getAddress());
+            if (handler.getServerAddress() == nullptr) {
+                handler.setServerAddress(new BLEAddress(advertisedDevice.getAddress()));
                 log_d("Found RaceBox Micro: %s", deviceName.c_str());
             }
         }
@@ -43,7 +45,10 @@ BLEHandler::BLEHandler()
       pBLEScan(nullptr), bleState(BLEState::IDLE), pServerAddress(nullptr),
       stateStartTime(0), configurationSent(false), packetBufferIndex(0),
       packetInProgress(false)
-{}
+{
+    // Store instance pointer
+    instance = this;
+}
 
 BLEHandler::~BLEHandler() {
     cleanup();
@@ -132,29 +137,31 @@ void BLEHandler::processPacket(uint8_t* pData, size_t length) {
     }
 }
 
+void BLEHandler::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, 
+                              uint8_t* pData, size_t length, bool isNotify) {
+    if (pBLERemoteCharacteristic == nullptr || instance == nullptr) return;
+    instance->handleNotifyCallback(pBLERemoteCharacteristic, pData, length, isNotify);
+}
+
 void BLEHandler::handleNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, 
                                     uint8_t* pData, size_t length, bool isNotify) {
     for (size_t i = 0; i < length; i++) {
-        // Look for packet header
         if (!packetInProgress && pData[i] == 0xB5 && i + 1 < length && pData[i + 1] == 0x62) {
             packetInProgress = true;
             packetBufferIndex = 0;
             packetBuffer[packetBufferIndex++] = 0xB5;
             packetBuffer[packetBufferIndex++] = 0x62;
-            i++; // Skip the 0x62 we just processed
+            i++;
             continue;
         }
 
-        // If we're building a packet, add the byte
         if (packetInProgress) {
             packetBuffer[packetBufferIndex++] = pData[i];
 
-            // If we have enough bytes to check the length
             if (packetBufferIndex >= 6) {
                 uint16_t payloadLength = packetBuffer[4] | (packetBuffer[5] << 8);
                 uint16_t expectedTotalLength = payloadLength + 8;
 
-                // If we have a complete packet
                 if (packetBufferIndex == expectedTotalLength) {
                     processPacket(packetBuffer, packetBufferIndex);
                     packetInProgress = false;
@@ -167,14 +174,6 @@ void BLEHandler::handleNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharact
                 }
             }
         }
-    }
-}
-
-void IRAM_ATTR BLEHandler::staticNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
-                                              uint8_t* pData, size_t length, bool isNotify) {
-    BLEHandler* instance = static_cast<BLEHandler*>(pBLERemoteCharacteristic->getUserData());
-    if (instance) {
-        instance->handleNotifyCallback(pBLERemoteCharacteristic, pData, length, isNotify);
     }
 }
 
@@ -209,8 +208,7 @@ bool BLEHandler::discoverServices() {
         rxChar = pService->getCharacteristic(UART_RX_CHAR_UUID);
         
         if (txChar != nullptr && rxChar != nullptr) {
-            txChar->setUserData(this);  // Store this pointer for callback
-            txChar->registerForNotify(staticNotifyCallback);
+            txChar->registerForNotify(notifyCallback);
             return true;
         }
     }
@@ -224,10 +222,9 @@ void BLEHandler::update() {
         case BLEState::IDLE:
             if (!bleConnected) {
                 log_i("Starting scan...");
-                if (pBLEScan->start(5, false)) {
-                    bleState = BLEState::SCANNING;
-                    stateStartTime = currentMillis;
-                }
+                pBLEScan->start(5, false);
+                bleState = BLEState::SCANNING;
+                stateStartTime = currentMillis;
             }
             break;
 

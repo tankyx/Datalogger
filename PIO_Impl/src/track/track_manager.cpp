@@ -7,9 +7,7 @@ TrackManager::TrackManager() : currentTrackIndex(0) {
 }
 
 TrackManager::~TrackManager() {
-    if (preferences.isOpen()) {
-        preferences.end();
-    }
+    preferences.end();
 }
 
 bool TrackManager::init() {

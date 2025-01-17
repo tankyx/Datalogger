@@ -33,6 +33,11 @@ public:
     bool isConnected() const { return bleConnected; }
     void setPacketCallback(PacketCallback cb) { packetCallback = cb; }
     void setConnectionCallback(ConnectionCallback cb) { connectionCallback = cb; }
+    BLEAddress* getServerAddress() const { return pServerAddress; }
+    void setServerAddress(BLEAddress* addr) { pServerAddress = addr; }
+
+    // Static instance pointer for callback
+    static BLEHandler* instance;
 
 private:
     static constexpr size_t MAX_PACKET_SIZE = 256;
@@ -66,6 +71,9 @@ private:
     bool discoverServices();
     void cleanup();
     
+    void handleNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, 
+                            uint8_t* pData, size_t length, bool isNotify);
+                            
     static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, 
                              uint8_t* pData, size_t length, bool isNotify);
     
