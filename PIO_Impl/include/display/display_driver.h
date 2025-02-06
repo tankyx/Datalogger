@@ -11,7 +11,6 @@ public:
     // Basic drawing operations
     virtual void clear() = 0;
     virtual void setBackgroundColor(uint16_t color) = 0;
-    virtual void drawCircle(int16_t x, int16_t y, int16_t radius, uint16_t color, bool filled = false) = 0;
     
     // Screen properties
     virtual uint16_t getWidth() = 0;

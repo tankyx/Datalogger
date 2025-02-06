@@ -59,15 +59,6 @@ void Diablo16Driver::setBackgroundColor(uint16_t color) {
     display.gfx_BGcolour(color);
 }
 
-void Diablo16Driver::drawCircle(int16_t x, int16_t y, int16_t radius, uint16_t color, bool filled) {
-    Serial.printf("Drawing circle at (%d,%d) with radius %d\n", x, y, radius);
-    if (filled) {
-        display.gfx_CircleFilled(x, y, radius, color);
-    } else {
-        display.gfx_Circle(x, y, radius, color);
-    }
-}
-
 uint16_t Diablo16Driver::getWidth() {
     return width;
 }
