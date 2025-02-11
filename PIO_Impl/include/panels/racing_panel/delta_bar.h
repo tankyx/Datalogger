@@ -1,13 +1,41 @@
 #pragma once
 
+#include <Diablo_Serial_4DLib.h>
+
 class DeltaBar {
-public:
-    DeltaBar(Diablo_Serial_4DLib* display) : display(display) {
-        barWidth = 180;
-        barHeight = 60;
-        centerX = 200;  // Center position
-        centerY = 40;   // Top of screen with margin
+private:
+    Diablo_Serial_4DLib* display;
+    uint16_t barWidth;
+    uint16_t barHeight;
+    uint16_t centerX;
+    uint16_t centerY;
+    
+    static constexpr uint16_t BLACK = 0x0000;
+    static constexpr uint16_t WHITE = 0xFFFF;
+    static constexpr uint16_t RED = 0xF800;
+    static constexpr uint16_t GREEN = 0x07E0;
+
+    void drawDeltaText(const char* text, uint16_t color) {
+        display->txt_Width(2);
+        display->txt_Height(2);
+        uint16_t textWidth = strlen(text) * 12;  // Approximate width
+        display->txt_FGcolour(color);
+        display->gfx_MoveTo(centerX - (textWidth/2), centerY + (barHeight/2) - 12);
+        display->putStr(text);
     }
+    
+    static uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    }
+
+public:
+    DeltaBar(Diablo_Serial_4DLib* disp) 
+        : display(disp)
+        , barWidth(180)
+        , barHeight(60)
+        , centerX(200)  // Center position
+        , centerY(40)   // Top of screen with margin
+    {}
 
     void draw() {
         // Draw background bar
@@ -58,30 +86,4 @@ public:
         }
         drawDeltaText(deltaText, barColor);
     }
-
-private:
-    Diablo_Serial_4DLib* display;
-    uint16_t barWidth;
-    uint16_t barHeight;
-    uint16_t centerX;
-    uint16_t centerY;
-    
-    void drawDeltaText(const char* text, uint16_t color) {
-        // Center the text in the bar
-        display->txt_Width(2);
-        display->txt_Height(2);
-        uint16_t textWidth = strlen(text) * 12;  // Approximate width
-        display->txt_FGcolour(color);
-        display->gfx_MoveTo(centerX - (textWidth/2), centerY + (barHeight/2) - 12);
-        display->putStr(text);
-    }
-    
-    static uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
-        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-    }
-
-    static constexpr uint16_t BLACK = 0x0000;
-    static constexpr uint16_t WHITE = 0xFFFF;
-    static constexpr uint16_t RED = 0xF800;
-    static constexpr uint16_t GREEN = 0x07E0;
 };
